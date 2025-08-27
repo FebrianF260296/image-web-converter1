@@ -1,3 +1,6 @@
+// This directive is crucial for the Next.js App Router.
+// It tells Next.js to render this component on the client-side (in the browser),
+// which is necessary for using hooks like useState and useEffect.
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
