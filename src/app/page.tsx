@@ -1,7 +1,10 @@
-// This directive is crucial for the Next.js App Router.
-// It tells Next.js to render this component on the client-side (in the browser),
-// which is necessary for using hooks like useState and useEffect.
+// =======================================================================
+// PENTING: PASTIKAN BARIS DI BAWAH INI ADALAH BARIS PERTAMA DI FILE ANDA.
+// JANGAN HAPUS ATAU PINDAHKAN.
+// Ini memberitahu Next.js untuk menjalankan komponen di browser,
+// yang wajib untuk menggunakan hook seperti useState dan useEffect.
 "use client";
+// =======================================================================
 
 import React, { useState, useCallback, useEffect } from 'react';
 
@@ -112,7 +115,6 @@ export default function App() {
             setOptimizedImages(results);
         } catch (error) {
             console.error("An error occurred during optimization:", error);
-            // Replaced alert with a more user-friendly error handling if possible
         } finally {
             setIsLoading(false);
         }
@@ -121,7 +123,6 @@ export default function App() {
     // Handler to download all optimized images as a ZIP file
     const handleDownloadAll = async () => {
         if (optimizedImages.length === 0 || typeof window.JSZip === 'undefined') {
-            // Replaced alert with a more user-friendly error handling
             console.error("JSZip library not loaded yet or no images to download.");
             return;
         }
@@ -143,7 +144,6 @@ export default function App() {
             document.body.removeChild(link);
         } catch (error) {
             console.error("Error creating ZIP file:", error);
-            // Replaced alert with a more user-friendly error handling
         } finally {
             setIsZipping(false);
         }
