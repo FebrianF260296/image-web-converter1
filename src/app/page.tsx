@@ -9,7 +9,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 
 // Helper function to format bytes into a readable string (KB, MB)
-const formatBytes = (bytes, decimals = 2) => {
+const formatBytes = (bytes: number, decimals: number = 2): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
@@ -21,8 +21,8 @@ const formatBytes = (bytes, decimals = 2) => {
 // Main App Component
 export default function App() {
     // State management using React Hooks
-    const [files, setFiles] = useState([]);
-    const [optimizedImages, setOptimizedImages] = useState([]);
+    const [files, setFiles] = useState<File[]>([]);
+    const [optimizedImages, setOptimizedImages] = useState<any[]>([]);
     const [quality, setQuality] = useState(85);
     const [isLoading, setIsLoading] = useState(false);
     const [isZipping, setIsZipping] = useState(false);
@@ -47,8 +47,9 @@ export default function App() {
     }, []);
 
     // Memoized handler for file selection (drag & drop or click)
-    const handleFileChange = useCallback((e) => {
-        const selectedFiles = Array.from(e.target.files || e.dataTransfer.files);
+    const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
+        const eventFiles = 'dataTransfer' in e ? e.dataTransfer.files : e.target.files;
+        const selectedFiles = Array.from(eventFiles || []);
         const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
         if (imageFiles.length > 0) {
             setFiles(imageFiles);
@@ -57,25 +58,28 @@ export default function App() {
     }, []);
 
     // Drag and Drop event handlers
-    const handleDragOver = useCallback((e) => e.preventDefault(), []);
-    const handleDrop = useCallback((e) => {
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => e.preventDefault(), []);
+    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         handleFileChange(e);
     }, [handleFileChange]);
 
     // Core image optimization logic for a single file
-    const optimizeImage = (file, qualityValue) => {
+    const optimizeImage = (file: File, qualityValue: number) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = (event) => {
                 const img = new Image();
-                img.src = event.target.result;
+                img.src = event.target.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     canvas.width = img.width;
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        return reject(new Error('Failed to get canvas context'));
+                    }
                     ctx.drawImage(img, 0, 0);
 
                     const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
@@ -122,13 +126,13 @@ export default function App() {
     
     // Handler to download all optimized images as a ZIP file
     const handleDownloadAll = async () => {
-        if (optimizedImages.length === 0 || typeof window.JSZip === 'undefined') {
+        if (optimizedImages.length === 0 || typeof (window as any).JSZip === 'undefined') {
             console.error("JSZip library not loaded yet or no images to download.");
             return;
         }
         setIsZipping(true);
         try {
-            const zip = new window.JSZip();
+            const zip = new (window as any).JSZip();
             optimizedImages.forEach(image => {
                 const originalName = image.originalName.substring(0, image.originalName.lastIndexOf('.'));
                 const extension = image.optimizedBlob.type.split('/')[1];
@@ -163,7 +167,7 @@ export default function App() {
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center cursor-pointer bg-slate-50 hover:bg-slate-200 transition-colors"
-                    onClick={() => document.getElementById('fileInput')?.click()}
+                    onClick={() => (document.getElementById('fileInput') as HTMLInputElement)?.click()}
                 >
                     <input
                         type="file"
