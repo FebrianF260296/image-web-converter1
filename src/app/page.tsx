@@ -8,7 +8,32 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 
-// Helper function to format bytes into a readable string (KB, MB)
+// --- Type Definitions for TypeScript ---
+
+// Describes the structure of an optimized image result object
+interface OptimizedImageResult {
+    originalName: string;
+    originalSize: number;
+    originalUrl: string;
+    optimizedUrl: string;
+    optimizedSize: number;
+    optimizedBlob: Blob;
+}
+
+// Minimal type definition for the JSZip library instance
+interface JSZipInstance {
+    file(name: string, data: Blob): JSZipInstance;
+    generateAsync(options: { type: 'blob' }): Promise<Blob>;
+}
+
+// Minimal type definition for the JSZip constructor
+interface JSZipConstructor {
+    new(): JSZipInstance;
+}
+
+// --- Helper Functions ---
+
+// Formats bytes into a readable string (KB, MB)
 const formatBytes = (bytes: number, decimals: number = 2): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -18,17 +43,18 @@ const formatBytes = (bytes: number, decimals: number = 2): string => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-// Main App Component
+// --- Main App Component ---
+
 export default function App() {
-    // State management using React Hooks
+    // State management with explicit types
     const [files, setFiles] = useState<File[]>([]);
-    const [optimizedImages, setOptimizedImages] = useState<any[]>([]);
+    const [optimizedImages, setOptimizedImages] = useState<OptimizedImageResult[]>([]);
     const [quality, setQuality] = useState(85);
     const [isLoading, setIsLoading] = useState(false);
     const [isZipping, setIsZipping] = useState(false);
     const [isClient, setIsClient] = useState(false);
 
-    // Effect to load JSZip script on the client side and set document title
+    // Effect to load JSZip script on the client side
     useEffect(() => {
         setIsClient(true);
         document.title = "Batch Image Optimizer | Next.js";
@@ -39,21 +65,20 @@ export default function App() {
         document.body.appendChild(script);
         
         return () => {
-            // Check if the script is still in the body before trying to remove it
             if (script.parentNode) {
                 document.body.removeChild(script);
             }
         };
     }, []);
 
-    // Memoized handler for file selection (drag & drop or click)
+    // Handler for file selection (drag & drop or click)
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
         const eventFiles = 'dataTransfer' in e ? e.dataTransfer.files : e.target.files;
         const selectedFiles = Array.from(eventFiles || []);
         const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
         if (imageFiles.length > 0) {
             setFiles(imageFiles);
-            setOptimizedImages([]); // Clear previous results
+            setOptimizedImages([]);
         }
     }, []);
 
@@ -64,33 +89,30 @@ export default function App() {
         handleFileChange(e);
     }, [handleFileChange]);
 
-    // Core image optimization logic for a single file
-    const optimizeImage = (file: File, qualityValue: number) => {
+    // Core image optimization logic
+    const optimizeImage = (file: File, qualityValue: number): Promise<OptimizedImageResult> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result as string;
+                const img = document.createElement('img');
+                img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     canvas.width = img.width;
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        return reject(new Error('Failed to get canvas context'));
-                    }
+                    if (!ctx) return reject(new Error('Failed to get canvas context'));
+                    
                     ctx.drawImage(img, 0, 0);
-
                     const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-                    const quality = qualityValue / 100;
-
+                    
                     canvas.toBlob((blob) => {
                         if (blob) {
                             resolve({
                                 originalName: file.name,
                                 originalSize: file.size,
-                                originalUrl: event.target.result,
+                                originalUrl: event.target?.result as string,
                                 optimizedUrl: URL.createObjectURL(blob),
                                 optimizedSize: blob.size,
                                 optimizedBlob: blob,
@@ -98,7 +120,7 @@ export default function App() {
                         } else {
                             reject(new Error('Canvas to Blob conversion failed'));
                         }
-                    }, outputType, quality);
+                    }, outputType, qualityValue / 100);
                 };
                 img.onerror = reject;
             };
@@ -111,11 +133,8 @@ export default function App() {
         if (files.length === 0) return;
         setIsLoading(true);
         setOptimizedImages([]);
-
-        const optimizationPromises = files.map(file => optimizeImage(file, quality));
-
         try {
-            const results = await Promise.all(optimizationPromises);
+            const results = await Promise.all(files.map(file => optimizeImage(file, quality)));
             setOptimizedImages(results);
         } catch (error) {
             console.error("An error occurred during optimization:", error);
@@ -126,13 +145,14 @@ export default function App() {
     
     // Handler to download all optimized images as a ZIP file
     const handleDownloadAll = async () => {
-        if (optimizedImages.length === 0 || typeof (window as any).JSZip === 'undefined') {
+        const JSZip = (window as { JSZip?: JSZipConstructor }).JSZip;
+        if (optimizedImages.length === 0 || !JSZip) {
             console.error("JSZip library not loaded yet or no images to download.");
             return;
         }
         setIsZipping(true);
         try {
-            const zip = new (window as any).JSZip();
+            const zip = new JSZip();
             optimizedImages.forEach(image => {
                 const originalName = image.originalName.substring(0, image.originalName.lastIndexOf('.'));
                 const extension = image.optimizedBlob.type.split('/')[1];
@@ -152,7 +172,6 @@ export default function App() {
             setIsZipping(false);
         }
     };
-
 
     return (
         <main className="bg-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
@@ -236,6 +255,7 @@ export default function App() {
                                 <div key={index} className="bg-slate-50 p-4 rounded-lg grid md:grid-cols-2 gap-4 items-center">
                                     {/* Previews */}
                                     <div className="grid grid-cols-2 gap-3">
+                                        {/* Menggunakan tag <img> standar untuk menghindari error build */}
                                         <img src={image.originalUrl} className="w-full h-auto rounded-md object-contain max-h-32" alt="Original" />
                                         <img src={image.optimizedUrl} className="w-full h-auto rounded-md object-contain max-h-32" alt="Optimized" />
                                     </div>
