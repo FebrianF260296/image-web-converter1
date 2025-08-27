@@ -95,7 +95,7 @@ export default function App() {
     };
 
     // Handler to start the batch optimization process
-    const handleOptimize = async (). => {
+    const handleOptimize = async () => {
         if (files.length === 0) return;
         setIsLoading(true);
         setOptimizedImages([]);
