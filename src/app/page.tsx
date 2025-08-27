@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useCallback, useEffect } from 'react';
 
 // Helper function to format bytes into a readable string (KB, MB)
